@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Async E-Commerce Cart Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body data-theme="light">
+
+    <div id="toast-container"></div>
+    <header class="main-header">
+        <div class="logo">AsyncStore <span class="badge-dev">Vanilla JS Async Engine</span></div>
+        <div class="search-filter-container">
+            <div class="search-wrapper">
+                <input type="text" id="search-bar" placeholder="Search products...">
+                <span id="search-clear" class="search-clear hidden">✕</span>
+            </div>
+            <select id="category-filter">
+                <option value="All">All Categories</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Clothing">Clothing</option>
+                <option value="Books">Books</option>
+            </select>
+            <select id="sort-filter">
+                <option value="default">Sort by: Default</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="name-asc">Name: A to Z</option>
+                <option value="name-desc">Name: Z to A</option>
+                <option value="stock-asc">Stock: Low to High</option>
+                <option value="stock-desc">Stock: High to Low</option>
+            </select>
+        </div>
+        <div class="header-actions">
+            <button id="theme-toggle" class="theme-btn" title="Toggle Theme">🌙</button>
+            <button id="cart-toggle-btn" class="cart-btn">🛒 Cart (<span id="cart-count">0</span>)</button>
+        </div>
+    </header>
+
+    <div id="global-status-container" class="status-container hidden">
+        <div class="spinner"></div>
+        <div class="status-text-block">
+            <span id="global-status-message">Processing...</span>
+            <small>UI locked for network safety</small>
+        </div>
+    </div>
+
+    <main class="app-container">
+        <section class="products-section">
+            <div class="section-header">
+                <div class="header-left">
+                    <h2>Product Catalog</h2>
+                    <small>Async data sync with mock server</small>
+                </div>
+                <div class="header-actions-right">
+                    <button id="export-btn" class="action-btn" title="Export Products">📥 Export</button>
+                    <button id="import-btn" class="action-btn" title="Import Products">📤 Import</button>
+                    <input type="file" id="import-file-input" accept=".json" style="display:none;">
+                    <button id="bulk-delete-btn" class="action-btn danger" style="display:none;">🗑️ Delete Selected</button>
+                </div>
+            </div>
+
+            <div class="add-product-form">
+                <h4>➕ Add New Product</h4>
+                <div class="form-row">
+                    <input type="text" id="new-product-name" placeholder="Product name" class="field-small">
+                    <input type="number" id="new-product-price" placeholder="Price" step="0.01" min="0" class="field-small">
+                    <input type="text" id="new-product-category" placeholder="Category" list="category-list" class="field-small">
+                    <input type="text" id="new-product-subcategory" placeholder="Sub-Category (optional)" list="subcategory-list" class="field-small">
+                    <input type="number" id="new-product-stock" placeholder="Stock" min="0" class="field-small">
+
+                    <!-- Image Upload Component (Compact) -->
+                    <div class="image-upload-wrapper">
+                        <div class="image-upload-container compact" id="add-image-upload-container">
+                            <span class="upload-icon">🖼️</span>
+                            <div class="upload-text">Click to add image</div>
+                            <div class="upload-subtext">Upload from device or URL</div>
+                            <img id="add-image-preview" class="image-preview" alt="Image preview">
+
+                            <div class="upload-options-dropdown" id="add-upload-options">
+                                <button class="upload-option" id="add-upload-file-option">
+                                    <span class="option-icon">📁</span> Upload from device
+                                </button>
+                                <button class="upload-option" id="add-upload-url-option">
+                                    <span class="option-icon">🔗</span> Enter image URL
+                                </button>
+                            </div>
+                            <input type="file" id="add-image-file-input" class="hidden-file-input" accept="image/*">
+                            <div class="url-input-container" id="add-url-input-container">
+                                <input type="text" id="add-image-url-input" placeholder="https://example.com/image.jpg">
+                                <div class="url-actions">
+                                    <button class="btn-cancel-url" id="add-url-cancel">Cancel</button>
+                                    <button class="btn-apply-url" id="add-url-apply">Apply URL</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="add-product-btn" class="btn-add-product">Add Product</button>
+                </div>
+            </div>
+
+            <div id="products-loading" class="loader-container">
+                <span>⏳ Loading products...</span>
+            </div>
+            <div id="products-grid" class="products-grid"></div>
+        </section>
+
+        <aside id="cart-sidebar" class="cart-sidebar">
+            <div class="sidebar-header">
+                <h3>Your Cart</h3>
+                <p>Persisted in localStorage</p>
+            </div>
+            <div id="cart-items-container" class="cart-scroll-viewport">
+                <p class="empty-cart-message">Your cart is empty.</p>
+            </div>
+            <div class="cart-summary-panel">
+                <h4>Summary</h4>
+                <div class="summary-line"><span class="label">Subtotal:</span> <span id="summary-subtotal">$0.00</span></div>
+                <div class="summary-line text-success-accent"><span class="label">Discount:</span> <span id="summary-discount">-$0.00</span></div>
+                <div class="summary-line" id="shipping-line"><span class="label">Shipping:</span> <span id="summary-shipping">$0.00</span></div>
+                <hr class="summary-divider">
+                <div class="summary-line grand-total-line"><span class="label">Total:</span> <span id="summary-total">$0.00</span></div>
+                <div class="coupon-control-wrapper">
+                    <label for="coupon-input">Promo Code</label>
+                    <div class="coupon-input-group">
+                        <input type="text" id="coupon-input" placeholder="SAVE10 or FLAT20">
+                        <button id="apply-coupon-btn">Apply</button>
+                    </div>
+                    <div id="coupon-feedback" class="feedback-message-node"></div>
+                </div>
+                <button id="checkout-btn" class="checkout-btn" disabled>🔒 Proceed to Checkout</button>
+            </div>
+        </aside>
+    </main>
+
+    <div id="wishlist-sidebar" class="wishlist-sidebar hidden">
+        <div class="wishlist-header">
+            <h3>❤️ Wishlist</h3>
+            <button id="close-wishlist" class="close-wishlist-btn">✕</button>
+        </div>
+        <div id="wishlist-items-container" class="wishlist-scroll-viewport">
+            <p class="empty-wishlist-message">Your wishlist is empty.</p>
+        </div>
+    </div>
+
+    <div id="success-modal" class="modal-overlay hidden">
+        <div class="modal-card-component">
+            <div class="modal-success-icon">✓</div>
+            <h2>Order Confirmed!</h2>
+            <p class="modal-lead-text">Your payment was successful.</p>
+            <div id="modal-summary-content" class="modal-receipt-data-box"></div>
+            <button id="close-modal-btn" class="modal-close-action-trigger">Close</button>
+        </div>
+    </div>
+
+    <div id="order-history-modal" class="modal-overlay hidden">
+        <div class="modal-card-component order-history-modal">
+            <button id="close-orders-modal" class="modal-close-btn">&times;</button>
+            <h2>📦 Order History</h2>
+            <div id="order-history-content" class="order-history-list">
+                <p class="empty-orders-message">No orders yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-product-modal" class="modal-overlay hidden">
+        <div class="modal-card-component">
+            <button id="close-edit-modal" class="modal-close-btn">&times;</button>
+            <h2>✏️ Edit Product</h2>
+            <form id="edit-product-form">
+                <input type="hidden" id="edit-product-id">
+
+                <div class="form-group">
+                    <label for="edit-product-name">Product Name *</label>
+                    <input type="text" id="edit-product-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-product-price">Price ($) *</label>
+                    <input type="number" id="edit-product-price" step="0.01" min="0.01" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-product-category">Category *</label>
+                    <input type="text" id="edit-product-category" list="category-list" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-product-subcategory">Sub-Category</label>
+                    <input type="text" id="edit-product-subcategory" list="subcategory-list">
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-product-stock">Stock *</label>
+                    <input type="number" id="edit-product-stock" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Product Image</label>
+                    <div class="image-upload-container compact" id="edit-image-upload-container">
+                        <span class="upload-icon">🖼️</span>
+                        <div class="upload-text">Click to change image</div>
+                        <div class="upload-subtext">Upload from device or URL</div>
+                        <img id="edit-image-preview" class="image-preview" alt="Image preview">
+
+                        <div class="upload-options-dropdown" id="edit-upload-options">
+                            <button class="upload-option" id="edit-upload-file-option">
+                                <span class="option-icon">📁</span> Upload from device
+                            </button>
+                            <button class="upload-option" id="edit-upload-url-option">
+                                <span class="option-icon">🔗</span> Enter image URL
+                            </button>
+                        </div>
+                        <input type="file" id="edit-image-file-input" class="hidden-file-input" accept="image/*">
+                        <div class="url-input-container" id="edit-url-input-container">
+                            <input type="text" id="edit-image-url-input" placeholder="https://example.com/image.jpg">
+                            <div class="url-actions">
+                                <button class="btn-cancel-url" id="edit-url-cancel">Cancel</button>
+                                <button class="btn-apply-url" id="edit-url-apply">Apply URL</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="cancel-edit-btn">Cancel</button>
+                    <button type="submit" id="save-edit-btn">💾 Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <datalist id="category-list"></datalist>
+    <datalist id="subcategory-list"></datalist>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
